@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Display Hub - NOS</title>
+  <link rel="stylesheet" href="assets/css/global.css">
+  <style>
+    .nos-toolbar{display:flex;align-items:center;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+    .nos-search{flex:1;min-width:200px;max-width:320px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px 9px 38px;color:var(--text-primary);font-size:.85rem;transition:border-color var(--transition)}
+    .nos-search:focus{outline:none;border-color:var(--accent)}
+    .nos-filter-select{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;color:var(--text-secondary);font-size:.83rem;cursor:pointer}
+    .nos-view-toggle{display:flex;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden}
+    .nos-view-btn{padding:8px 12px;color:var(--text-muted);display:flex;align-items:center;gap:5px;font-size:.78rem;transition:background .2s,color .2s}
+    .nos-view-btn.active{background:var(--accent-glow);color:var(--accent)}
+    .nos-stats-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+    .nos-stat-chip{display:flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border);border-radius:999px;padding:5px 14px;font-size:.78rem;color:var(--text-secondary)}
+    .nos-stat-chip .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .nos-stat-chip.total .dot{background:var(--accent)}
+    .nos-stat-chip.ok .dot{background:var(--success)}
+    .nos-stat-chip.warn .dot{background:var(--warning)}
+    .nos-stat-chip.crit .dot{background:var(--danger)}
+    .nos-stat-chip.off .dot{background:var(--text-muted)}
+    .nos-stat-chip strong{color:var(--text-primary)}
+    .nos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+    .nos-grid.list-view{grid-template-columns:1fr;gap:6px}
+    .nos-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s;position:relative;overflow:hidden}
+    .nos-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+    .nos-card.health-ok::before{background:var(--success)}
+    .nos-card.health-warn::before{background:var(--warning)}
+    .nos-card.health-crit::before{background:var(--danger)}
+    .nos-card:hover{transform:translateY(-2px);border-color:var(--border-strong);box-shadow:var(--shadow-sm)}
+    .nos-card.selected{border-color:var(--border-accent);box-shadow:var(--shadow-accent)}
+    .nos-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+    .nos-card-name{font-size:.88rem;font-weight:600;color:var(--text-primary);line-height:1.3}
+    .nos-card-group{font-size:.73rem;color:var(--text-muted);margin-top:2px}
+    .health-ring{flex-shrink:0;position:relative}
+    .health-ring svg{transform:rotate(-90deg)}
+    .health-ring .ring-bg{stroke:var(--border-strong)}
+    .health-ring.ok .ring-fill{stroke:var(--success)}
+    .health-ring.warn .ring-fill{stroke:var(--warning)}
+    .health-ring.crit .ring-fill{stroke:var(--danger)}
+    .health-ring.off .ring-fill{stroke:var(--text-muted)}
+    .health-ring-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:var(--text-primary)}
+    .nos-layers{display:flex;gap:5px;margin-bottom:12px}
+    .layer-pip{flex:1;height:4px;border-radius:2px;background:var(--border-strong)}
+    .layer-pip.ok{background:var(--success)}
+    .layer-pip.warn{background:var(--warning)}
+    .layer-pip.crit{background:var(--danger)}
+    .layer-pip.na{background:var(--text-muted);opacity:.4}
+    .nos-card-meta{display:flex;gap:6px;flex-wrap:wrap}
+    .nos-tag{font-size:.7rem;padding:2px 8px;border-radius:4px;border:1px solid}
+    .nos-tag.online{color:var(--success);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
+    .nos-tag.offline{color:var(--text-muted);border-color:var(--border);background:transparent}
+    .nos-tag.playback{color:var(--accent);border-color:var(--border-accent);background:var(--accent-glow)}
+    .nos-tag.pause{color:var(--warning);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)}
+    .nos-tag.empty{color:var(--danger);border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+    .nos-tag.version{color:var(--text-muted);border-color:var(--border)}
+    .nos-last-online{font-size:.71rem;color:var(--text-muted);margin-top:10px;display:flex;align-items:center;gap:5px}
+    .nos-grid.list-view .nos-card{padding:12px 18px;display:flex;align-items:center;gap:14px}
+    .nos-grid.list-view .nos-card-header{margin-bottom:0;flex:1}
+    .nos-grid.list-view .nos-layers{margin-bottom:0;flex-shrink:0}
+    .nos-grid.list-view .nos-last-online{display:none}
+    .slide-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:900;opacity:0;pointer-events:none;transition:opacity .35s}
+    .slide-overlay.visible{opacity:1;pointer-events:auto}
+    .slide-panel{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:100vw;background:var(--bg-secondary);border-left:1px solid var(--border);z-index:901;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .35s;box-shadow:-8px 0 40px rgba(0,0,0,.5)}
+    .slide-panel.open{transform:translateX(0)}
+    .slide-header{padding:20px 24px 0;border-bottom:1px solid var(--border);flex-shrink:0;position:relative}
+    .slide-close{position:absolute;top:16px;right:18px;color:var(--text-muted);font-size:1.3rem;line-height:1;padding:4px 8px;border-radius:var(--radius-xs)}
+    .slide-close:hover{background:var(--bg-card-hover);color:var(--text-primary)}
+    .slide-device-title{font-size:1rem;font-weight:700;color:var(--text-primary);margin-bottom:2px;padding-right:36px}
+    .slide-device-sub{font-size:.75rem;color:var(--text-muted);margin-bottom:16px}
+    .slide-tabs{display:flex;overflow-x:auto}
+    .slide-tab{padding:10px 16px;font-size:.78rem;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s,border-color .2s;flex-shrink:0}
+    .slide-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .slide-tab .tab-pip{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle}
+    .slide-body{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin}
+    .slide-pane{display:none}
+    .slide-pane.active{display:block}
+    .info-section{margin-bottom:20px}
+    .info-section-title{font-size:.68rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+    .info-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.03);gap:12px}
+    .info-row:last-child{border-bottom:none}
+    .info-label{font-size:.78rem;color:var(--text-muted);flex-shrink:0}
+    .info-value{font-size:.8rem;font-weight:500;color:var(--text-primary);text-align:right;word-break:break-all}
+    .info-value.mono{font-family:monospace;font-size:.73rem}
+    .status-badge{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;padding:3px 10px;border-radius:999px}
+    .status-badge.online{background:rgba(16,185,129,.12);color:var(--success)}
+    .status-badge.offline{background:rgba(255,255,255,.05);color:var(--text-muted)}
+    .status-badge.playback{background:var(--accent-glow);color:var(--accent)}
+    .status-badge.pause{background:rgba(245,158,11,.12);color:var(--warning)}
+    .status-badge.empty{background:rgba(239,68,68,.12);color:var(--danger)}
+    .status-badge::before{content:'';font-size:.5rem}
+    .adapter-card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:8px}
+    .adapter-name{font-size:.78rem;font-weight:600;color:var(--text-primary);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+    .adapter-active{color:var(--success);font-size:.65rem;font-weight:500}
+    .adapter-inactive{color:var(--text-muted);font-size:.65rem}
+    .show-item{display:flex;align-items:center;gap:12px;padding:9px 12px;background:var(--bg-card);border-radius:var(--radius-sm);margin-bottom:6px}
+    .show-time{font-size:.7rem;color:var(--text-muted);font-family:monospace;flex-shrink:0;min-width:70px}
+    .show-name{font-size:.78rem;color:var(--text-primary);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .show-dur{font-size:.7rem;color:var(--text-muted);flex-shrink:0}
+    .na-box{background:var(--bg-card);border:1px dashed var(--border);border-radius:var(--radius-sm);padding:20px;text-align:center}
+    .na-box-icon{opacity:.25;margin:0 auto 10px;display:block}
+    .na-box-title{font-size:.82rem;color:var(--text-secondary);font-weight:500}
+    .na-box-sub{font-size:.73rem;color:var(--text-muted);margin-top:4px}
+    .health-score-display{display:flex;align-items:center;gap:16px;background:var(--bg-card);border-radius:var(--radius-sm);padding:16px;margin-bottom:20px}
+    .health-score-number{font-size:2.4rem;font-weight:800;line-height:1}
+    .health-score-number.ok{color:var(--success)}
+    .health-score-number.warn{color:var(--warning)}
+    .health-score-number.crit{color:var(--danger)}
+    .health-score-label{font-size:.78rem;color:var(--text-muted);margin-top:2px}
+    .health-layers-grid{display:flex;flex-direction:column;gap:8px;flex:1}
+    .health-layer-row{display:flex;align-items:center;gap:10px}
+    .health-layer-num{font-size:.65rem;font-weight:700;color:var(--text-muted);width:16px;flex-shrink:0}
+    .health-layer-name{font-size:.78rem;color:var(--text-secondary);flex:1}
+    .health-layer-bar-wrap{width:80px;height:5px;background:var(--border-strong);border-radius:3px;overflow:hidden;flex-shrink:0}
+    .health-layer-bar{height:100%;border-radius:3px;transition:width .4s}
+    .health-layer-bar.ok{background:var(--success)}
+    .health-layer-bar.warn{background:var(--warning)}
+    .health-layer-bar.crit{background:var(--danger)}
+    .health-layer-bar.na{background:var(--text-muted);opacity:.4}
+    .health-layer-status{font-size:.7rem;font-weight:600;width:50px;text-align:right;flex-shrink:0}
+    .health-layer-status.ok{color:var(--success)}
+    .health-layer-status.warn{color:var(--warning)}
+    .health-layer-status.crit{color:var(--danger)}
+    .health-layer-status.na{color:var(--text-muted)}
+    .nos-spinner{display:flex;align-items:center;justify-content:center;gap:10px;padding:60px;color:var(--text-muted);font-size:.85rem}
+    .spinner-ring{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .nos-empty{text-align:center;padding:60px 20px;color:var(--text-muted)}
+    .nos-refresh-label{font-size:.72rem;color:var(--text-muted);margin-left:auto;flex-shrink:0}
+    .panel-loading{display:flex;align-items:center;gap:8px;font-size:.78rem;color:var(--text-muted);padding:12px 0}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      <span class="sidebar-logo-text">Display Hub</span>
+      <span class="sidebar-logo-badge">v1.0</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a href="index.html" class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Equipamentos
+      </a>
+      <a href="nos.html" class="nav-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        NOS
+      </a>
+      <a href="relatorio.html" class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Relatorio de Exibicoes
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-config-btn" onclick="openConfigModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+        Configurar API
+      </button>
+    </div>
+  </aside>
+
+  <div class="main-wrapper">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">NOS - Nucleo de Operacao Sistemica</div>
+        <div class="topbar-subtitle" id="topbar-subtitle">Monitoramento em 5 camadas de saude</div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="api-status-indicator">
+        <div class="api-status-dot" id="status-dot"></div>
+        <span class="api-status-label" id="status-label">Nao configurado</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadNOS()" style="gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Atualizar
+      </button>
+    </div>
+
+    <main class="main-content">
+      <div class="nos-toolbar">
+        <input type="text" class="nos-search" id="nos-search" placeholder="Buscar equipamento..." oninput="filterCards()">
+        <select class="nos-filter-select" id="nos-filter-conn" onchange="filterCards()">
+          <option value="">Conectividade: Todos</option>
+          <option value="online">Online</option>
+          <option value="offline">Offline</option>
+        </select>
+        <select class="nos-filter-select" id="nos-filter-player" onchange="filterCards()">
+          <option value="">Player: Todos</option>
+          <option value="playback">Reproduzindo</option>
+          <option value="pause">Em Pausa</option>
+          <option value="empty">Sem Conteudo</option>
+        </select>
+        <select class="nos-filter-select" id="nos-filter-health" onchange="filterCards()">
+          <option value="">Saude: Todas</option>
+          <option value="ok">Saudavel</option>
+          <option value="warn">Atencao</option>
+          <option value="crit">Critico</option>
+        </select>
+        <select class="nos-filter-select" id="nos-filter-group" onchange="filterCards()">
+          <option value="">Grupo: Todos</option>
+        </select>
+        <div class="nos-view-toggle">
+          <button class="nos-view-btn active" id="btn-grid-view" onclick="setView('grid')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+          <button class="nos-view-btn" id="btn-list-view" onclick="setView('list')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+        </div>
+        <span class="nos-refresh-label">Ultima att: <span id="last-refresh">-</span></span>
+      </div>
+
+      <div class="nos-stats-bar" id="nos-stats-bar" style="display:none">
+        <div class="nos-stat-chip total"><div class="dot"></div>Total: <strong id="stat-total">0</strong></div>
+        <div class="nos-stat-chip ok"><div class="dot"></div>Online: <strong id="stat-online">0</strong></div>
+        <div class="nos-stat-chip off"><div class="dot"></div>Offline: <strong id="stat-offline">0</strong></div>
+        <div class="nos-stat-chip ok"><div class="dot"></div>Reproduzindo: <strong id="stat-playing">0</strong></div>
+        <div class="nos-stat-chip warn"><div class="dot"></div>Atencao: <strong id="stat-warn">0</strong></div>
+        <div class="nos-stat-chip crit"><div class="dot"></div>Critico: <strong id="stat-crit">0</strong></div>
+      </div>
+
+      <div id="nos-loading" class="nos-spinner">
+        <div class="spinner-ring"></div> Carregando equipamentos...
+      </div>
+      <div id="nos-grid" class="nos-grid" style="display:none"></div>
+      <div id="nos-empty" class="nos-empty" style="display:none">
+        <p style="font-size:.9rem;color:var(--text-secondary)">Nenhum equipamento encontrado</p>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="slide-overlay" id="slide-overlay" onclick="closePanel()"></div>
+<div class="slide-panel" id="slide-panel">
+  <div class="slide-header">
+    <button class="slide-close" onclick="closePanel()">&#10005;</button>
+    <div class="slide-device-title" id="panel-title">-</div>
+    <div class="slide-device-sub" id="panel-sub">-</div>
+    <div class="slide-tabs">
+      <button class="slide-tab active" data-tab="overview" onclick="switchTab(this)"><span class="tab-pip" id="pip-overview" style="background:var(--text-muted)"></span>Visao Geral</button>
+      <button class="slide-tab" data-tab="n1" onclick="switchTab(this)"><span class="tab-pip" id="pip-n1" style="background:var(--text-muted)"></span>N1 Conectividade</button>
+      <button class="slide-tab" data-tab="n2" onclick="switchTab(this)"><span class="tab-pip" id="pip-n2" style="background:var(--text-muted)"></span>N2 Dispositivo</button>
+      <button class="slide-tab" data-tab="n3" onclick="switchTab(this)"><span class="tab-pip" id="pip-n3" style="background:var(--text-muted)"></span>N3 Player</button>
+      <button class="slide-tab" data-tab="n4" onclick="switchTab(this)"><span class="tab-pip" id="pip-n4" style="background:var(--text-muted)"></span>N4 Conteudo</button>
+      <button class="slide-tab" data-tab="n5" onclick="switchTab(this)"><span class="tab-pip" id="pip-n5" style="background:var(--text-muted)"></span>N5 Display</button>
+    </div>
+  </div>
+  <div class="slide-body">
+    <div class="slide-pane active" id="pane-overview">
+      <div class="health-score-display">
+        <div><div class="health-score-number" id="panel-score-num">-</div><div class="health-score-label">Score de Saude</div></div>
+        <div class="health-layers-grid">
+          <div class="health-layer-row"><span class="health-layer-num">N1</span><span class="health-layer-name">Conectividade</span><div class="health-layer-bar-wrap"><div class="health-layer-bar" id="bar-n1"></div></div><span class="health-layer-status" id="lbl-n1">-</span></div>
+          <div class="health-layer-row"><span class="health-layer-num">N2</span><span class="health-layer-name">Dispositivo</span><div class="health-layer-bar-wrap"><div class="health-layer-bar" id="bar-n2"></div></div><span class="health-layer-status" id="lbl-n2">-</span></div>
+          <div class="health-layer-row"><span class="health-layer-num">N3</span><span class="health-layer-name">Player</span><div class="health-layer-bar-wrap"><div class="health-layer-bar" id="bar-n3"></div></div><span class="health-layer-status" id="lbl-n3">-</span></div>
+          <div class="health-layer-row"><span class="health-layer-num">N4</span><span class="health-layer-name">Conteudo</span><div class="health-layer-bar-wrap"><div class="health-layer-bar" id="bar-n4"></div></div><span class="health-layer-status" id="lbl-n4">-</span></div>
+          <div class="health-layer-row"><span class="health-layer-num">N5</span><span class="health-layer-name">Display</span><div class="health-layer-bar-wrap"><div class="health-layer-bar" id="bar-n5"></div></div><span class="health-layer-status" id="lbl-n5">-</span></div>
+        </div>
+      </div>
+      <div id="pane-overview-detail"></div>
+    </div>
+    <div class="slide-pane" id="pane-n1">
+      <div class="info-section"><div class="info-section-title">Estado de Conectividade</div><div id="n1-conn-status"></div></div>
+      <div class="info-section"><div class="info-section-title">Comunicacao</div><div id="n1-comm-rows"></div></div>
+      <div class="info-section"><div class="info-section-title">Adaptadores de Rede</div><div id="n1-adapters"></div></div>
+    </div>
+    <div class="slide-pane" id="pane-n2">
+      <div class="info-section"><div class="info-section-title">Dados Disponiveis pela API</div><div id="n2-available"></div></div>
+      <div class="info-section"><div class="info-section-title">Metricas de Hardware</div><div class="na-box"><div class="na-box-title">CPU, RAM, temperatura e armazenamento</div><div class="na-box-sub">Nao reportado pela API da DisplayForce.</div></div></div>
+    </div>
+    <div class="slide-pane" id="pane-n3">
+      <div class="info-section"><div class="info-section-title">Estado do Player</div><div id="n3-status-row"></div></div>
+      <div class="info-section"><div class="info-section-title">Informacoes do Software</div><div id="n3-info-rows"></div></div>
+    </div>
+    <div class="slide-pane" id="pane-n4">
+      <div class="info-section">
+        <div class="info-section-title">Ultimas Exibicoes - 24 horas</div>
+        <div id="n4-loading" class="panel-loading" style="display:none"><div class="spinner-ring" style="width:14px;height:14px;border-width:1.5px"></div>Buscando historico...</div>
+        <div id="n4-content"></div>
+      </div>
+    </div>
+    <div class="slide-pane" id="pane-n5">
+      <div class="info-section"><div class="info-section-title">Estado da Tela Fisica</div><div class="na-box"><div class="na-box-title">Sinal, brilho, temperatura e alimentacao</div><div class="na-box-sub">Nao reportado pela API da DisplayForce.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+var allDevices=[],folderMap={},currentView='grid',selectedDeviceId=null,_allCampaigns=null;
+function calcHealth(d){var n1=d.connection_state==='online'?100:(function(){if(!d.last_online)return 0;var h=(Date.now()-new Date(d.last_online))/3600000;return h<1?70:h<6?40:h<24?20:0;})();var n3={playback:100,pause:50,empty:0,problem:0}[d.player_status]||30;var n4=d._n4Score!=null?d._n4Score:50;var score=Math.round(n1*.30+50*.10+n3*.35+n4*.15+50*.10);var cls=score>=70?'ok':score>=40?'warn':'crit';function pip(v){return v>=70?'ok':v>=40?'warn':'crit';}return{score,n1,n2:50,n3,n4,n5:50,cls,pipN1:pip(n1),pipN2:'na',pipN3:pip(n3),pipN4:d._n4Score==null?'na':pip(n4),pipN5:'na'};}
+function timeAgo(iso){if(!iso)return'Nunca';var m=Math.floor((Date.now()-new Date(iso))/60000);if(m<1)return'agora';if(m<60)return m+'min atras';var h=Math.floor(m/60);if(h<24)return h+'h atras';return Math.floor(h/24)+'d atras';}
+function fmtDate(iso){return iso?new Date(iso).toLocaleString('pt-BR'):'-';}
+function fmtDur(s){if(!s||s<0)return'-';var m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
+function playerLabel(s){return{playback:'Reproduzindo',pause:'Em Pausa',empty:'Sem Conteudo',problem:'Problema',offline:'Offline'}[s]||s||'-';}
+function ringHTML(score,cls,size){size=size||44;var r=size/2-4,circ=2*Math.PI*r,off=circ-(score/100)*circ;return '<div class="health-ring '+cls+'" style="width:'+size+'px;height:'+size+'px"><svg width="'+size+'" height="'+size+'"><circle class="ring-bg" cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke-width="3"/><circle class="ring-fill" cx="'+size/2+'" cy="'+size/2+'" r="'+r+'" fill="none" stroke-width="3" stroke-dasharray="'+circ+'" stroke-dashoffset="'+off+'" stroke-linecap="round"/></svg><div class="health-ring-label">'+score+'</div></div>';}
+function renderCard(d){var h=calcHealth(d),f=folderMap[d.parent_id]||{name:'Sem grupo'};return '<div class="nos-card health-'+h.cls+(selectedDeviceId===d.id?' selected':'')+' " id="card-'+d.id+'" data-id="'+d.id+'" data-name="'+d.name.toLowerCase()+'" data-conn="'+d.connection_state+'" data-player="'+d.player_status+'" data-health="'+h.cls+'" data-group="'+d.parent_id+'" onclick="openPanel('+d.id+')"><div class="nos-card-header"><div><div class="nos-card-name">'+d.name+'</div><div class="nos-card-group">'+f.name+'</div></div>'+ringHTML(h.score,h.cls,44)+'</div><div class="nos-layers"><div class="layer-pip '+h.pipN1+'" title="N1"></div><div class="layer-pip '+h.pipN2+'" title="N2"></div><div class="layer-pip '+h.pipN3+'" title="N3"></div><div class="layer-pip '+h.pipN4+'" title="N4"></div><div class="layer-pip '+h.pipN5+'" title="N5"></div></div><div class="nos-card-meta"><span class="nos-tag '+d.connection_state+'">'+(d.connection_state==='online'?'Online':'Offline')+'</span><span class="nos-tag '+d.player_status+'">'+playerLabel(d.player_status)+'</span>'+(d.player_version?'<span class="nos-tag version">v'+d.player_version+'</span>':'')+'</div><div class="nos-last-online">Ultimo contato: '+timeAgo(d.last_online)+'</div></div>';}
+async function loadNOS(){document.getElementById('nos-loading').style.display='flex';document.getElementById('nos-grid').style.display='none';document.getElementById('nos-empty').style.display='none';document.getElementById('nos-stats-bar').style.display='none';try{var dr=await api.getDevices({limit:10000,params:['id','name','parent_id','connection_state','player_status','last_online','player_version','time_zone','network_adapters','tags','description','address','activation_date']});var fr=await api.getDeviceFolders({limit:10000});allDevices=(dr.data||[]).map(function(d){if(d.connection_state!=='online')d.player_status='offline';return d;});folderMap={};(fr.data||[]).forEach(function(f){folderMap[f.id]=f;});var gs=document.getElementById('nos-filter-group');(fr.data||[]).forEach(function(f){if(!gs.querySelector('option[value="'+f.id+'"]')){var o=document.createElement('option');o.value=f.id;o.textContent=f.name;gs.appendChild(o);}});document.getElementById('nos-loading').style.display='none';if(allDevices.length===0){document.getElementById('nos-empty').style.display='block';return;}allDevices.sort(function(a,b){if(a.connection_state!==b.connection_state)return a.connection_state==='online'?-1:1;var ha=calcHealth(a).score,hb=calcHealth(b).score;if(ha!==hb)return hb-ha;return a.name.localeCompare(b.name);});updateStats();renderGrid();document.getElementById('last-refresh').textContent=new Date().toLocaleTimeString('pt-BR');document.getElementById('topbar-subtitle').textContent=allDevices.length+' equipamentos - '+new Date().toLocaleTimeString('pt-BR');_allCampaigns=null;setTimeout(prefetchCampaigns,500);}catch(err){document.getElementById('nos-loading').style.display='none';document.getElementById('nos-empty').style.display='block';showToast('error','Erro ao carregar NOS',err.message);}}
+function updateStats(){var on=allDevices.filter(function(d){return d.connection_state==='online';}).length;var pl=allDevices.filter(function(d){return d.player_status==='playback';}).length;var wa=allDevices.filter(function(d){return calcHealth(d).cls==='warn';}).length;var cr=allDevices.filter(function(d){return calcHealth(d).cls==='crit';}).length;document.getElementById('stat-total').textContent=allDevices.length;document.getElementById('stat-online').textContent=on;document.getElementById('stat-offline').textContent=allDevices.length-on;document.getElementById('stat-playing').textContent=pl;document.getElementById('stat-warn').textContent=wa;document.getElementById('stat-crit').textContent=cr;document.getElementById('nos-stats-bar').style.display='flex';}
+function renderGrid(){var g=document.getElementById('nos-grid');g.innerHTML=allDevices.map(renderCard).join('');g.style.display='grid';filterCards();}
+function filterCards(){var q=document.getElementById('nos-search').value.toLowerCase(),conn=document.getElementById('nos-filter-conn').value,player=document.getElementById('nos-filter-player').value,health=document.getElementById('nos-filter-health').value,group=document.getElementById('nos-filter-group').value,vis=0;document.querySelectorAll('.nos-card').forEach(function(c){var ok=(!q||c.dataset.name.includes(q))&&(!conn||c.dataset.conn===conn)&&(!player||c.dataset.player===player)&&(!health||c.dataset.health===health)&&(!group||c.dataset.group===group);c.style.display=ok?'':'none';if(ok)vis++;});document.getElementById('nos-empty').style.display=vis===0?'block':'none';}
+function setView(v){currentView=v;document.getElementById('nos-grid').classList.toggle('list-view',v==='list');document.getElementById('btn-grid-view').classList.toggle('active',v==='grid');document.getElementById('btn-list-view').classList.toggle('active',v==='list');}
+function openPanel(id){var d=allDevices.find(function(x){return x.id===id;});if(!d)return;selectedDeviceId=id;document.querySelectorAll('.nos-card').forEach(function(c){c.classList.toggle('selected',c.dataset.id==id);});var f=folderMap[d.parent_id]||{name:'Sem grupo'};document.getElementById('panel-title').textContent=d.name;document.getElementById('panel-sub').textContent=f.name+' | ID '+d.id+' | TZ '+(d.time_zone||'-');var h=calcHealth(d),pc={ok:'var(--success)',warn:'var(--warning)',crit:'var(--danger)',na:'var(--text-muted)'};['n1','n2','n3','n4','n5','overview'].forEach(function(k){var pip=k==='overview'?h.cls:h['pip'+k.toUpperCase()];document.getElementById('pip-'+k).style.background=pc[pip]||pc.na;});fillOverview(d,h);fillN1(d);fillN2(d);fillN3(d);fillN4(d);switchTabById('overview');document.getElementById('slide-overlay').classList.add('visible');document.getElementById('slide-panel').classList.add('open');}
+function closePanel(){selectedDeviceId=null;document.querySelectorAll('.nos-card').forEach(function(c){c.classList.remove('selected');});document.getElementById('slide-overlay').classList.remove('visible');document.getElementById('slide-panel').classList.remove('open');}
+function switchTab(btn){document.querySelectorAll('.slide-tab').forEach(function(t){t.classList.remove('active');});document.querySelectorAll('.slide-pane').forEach(function(p){p.classList.remove('active');});btn.classList.add('active');document.getElementById('pane-'+btn.dataset.tab).classList.add('active');}
+function switchTabById(id){document.querySelectorAll('.slide-tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===id);});document.querySelectorAll('.slide-pane').forEach(function(p){p.classList.toggle('active',p.id==='pane-'+id);});}
+function irow(l,v){return '<div class="info-row"><span class="info-label">'+l+'</span><span class="info-value">'+v+'</span></div>';}
+function sbadge(c,l){return '<span class="status-badge '+c+'">'+l+'</span>';}
+function fillOverview(d,h){var sn=document.getElementById('panel-score-num');sn.className='health-score-number '+h.cls;sn.textContent=h.score;function sb(id,w,c){var b=document.getElementById(id);b.style.width=w+'%';b.className='health-layer-bar '+c;}function sl(id,t,c){var e=document.getElementById(id);e.textContent=t;e.className='health-layer-status '+c;}sb('bar-n1',h.n1,h.pipN1);sl('lbl-n1',h.n1+'%',h.pipN1);sb('bar-n2',50,'na');sl('lbl-n2','N/A','na');sb('bar-n3',h.n3,h.pipN3);sl('lbl-n3',h.n3+'%',h.pipN3);sb('bar-n4',h.n4,h.pipN4);sl('lbl-n4',d._n4Score==null?'N/A':h.n4+'%',h.pipN4);sb('bar-n5',50,'na');sl('lbl-n5','N/A','na');document.getElementById('pane-overview-detail').innerHTML='<div class="info-section"><div class="info-section-title">Resumo</div>'+irow('Conectividade',sbadge(d.connection_state,d.connection_state==='online'?'Online':'Offline'))+irow('Player',sbadge(d.player_status,playerLabel(d.player_status)))+irow('Versao Player',d.player_version?'v'+d.player_version:'-')+irow('Reproduzindo Agora','<span id="overview-playing-now" style="color:var(--text-muted)">Buscando...</span>')+irow('Ultimo contato',fmtDate(d.last_online))+irow('Fuso horario',d.time_zone||'-')+irow('Grupo',folderMap[d.parent_id]?folderMap[d.parent_id].name:'-')+'</div>';}
+function fillN1(d){var diffH=d.last_online?(Date.now()-new Date(d.last_online))/3600000:null,stab=diffH===null?'-':diffH<1?'<span style="color:var(--success)">Recente</span>':diffH<6?'<span style="color:var(--warning)">Instavel</span>':diffH<24?'<span style="color:var(--warning)">Degradado</span>':'<span style="color:var(--danger)">Sem comunicacao</span>';document.getElementById('n1-conn-status').innerHTML=irow('Estado',sbadge(d.connection_state,d.connection_state==='online'?'Online':'Offline'))+irow('Estabilidade',stab)+irow('Ultimo contato',fmtDate(d.last_online));var adapters=d.network_adapters||[],pub=adapters.find(function(a){return a.public_ip;});document.getElementById('n1-comm-rows').innerHTML=irow('Fuso horario',d.time_zone||'-')+irow('ID do equipamento',d.id)+irow('Data de ativacao',fmtDate(d.activation_date))+irow('IP Publico',pub?pub.public_ip:'-');document.getElementById('n1-adapters').innerHTML=adapters.length===0?'<div class="na-box"><div class="na-box-sub">Nenhum adaptador reportado.</div></div>':adapters.map(function(a){return '<div class="adapter-card"><div class="adapter-name">'+a.name+'<span class="'+(a.is_active?'adapter-active':'adapter-inactive')+'">'+(a.is_active?'Ativo':'Inativo')+'</span></div>'+irow('IP Privado',a.private_ip||'-')+irow('IP Publico',a.public_ip||'-')+irow('MAC',a.mac||'-')+irow('Mascara',a.mask!=null?'/'+a.mask:'-')+'</div>';}).join('');}
+function fillN2(d){document.getElementById('n2-available').innerHTML=irow('Versao do Player',d.player_version?'v'+d.player_version:'-')+irow('Fuso horario',d.time_zone||'-')+irow('Data de ativacao',fmtDate(d.activation_date))+irow('Descricao',d.description||'-')+irow('Andar',d.address&&d.address.floor?d.address.floor:'-')+irow('Sala',d.address&&d.address.room?d.address.room:'-')+irow('Tags',d.tags&&d.tags.length?d.tags.join(', '):'-');}
+function fillN3(d){var diffH=d.last_online?(Date.now()-new Date(d.last_online))/3600000:null,hb=diffH===null?'-':diffH<1?'<span style="color:var(--success)">Normal</span>':diffH<6?'<span style="color:var(--warning)">Atrasado</span>':'<span style="color:var(--danger)">Sem heartbeat</span>';document.getElementById('n3-status-row').innerHTML=irow('Estado',sbadge(d.player_status,playerLabel(d.player_status)));document.getElementById('n3-info-rows').innerHTML=irow('Versao',d.player_version?'v'+d.player_version:'-')+irow('Ultimo heartbeat',fmtDate(d.last_online))+irow('Status heartbeat',hb)+irow('Ultima sinc.','<span style="color:var(--text-muted)">Nao reportado</span>');}
+function _setPlayingNow(txt,color){var el=document.getElementById('overview-playing-now');if(el){el.textContent=txt;el.style.color=color||'var(--text-primary)';}}
+function _getCampaignForDevice(deviceId){
+  if(!_allCampaigns)return null;
+  var active=_allCampaigns.filter(function(c){
+    return c.status==='active'&&Array.isArray(c.devices)&&c.devices.indexOf(deviceId)!==-1;
+  });
+  if(active.length===0)return null;
+  return active.map(function(c){return c.name;}).join(', ');
+}
+async function fillN4(d){
+  var el=document.getElementById('n4-content'),ldg=document.getElementById('n4-loading');
+  el.innerHTML='';ldg.style.display='flex';
+  try{
+    if(!_allCampaigns){
+      var res=await api.getCampaigns({limit:10000});
+      _allCampaigns=res.data||[];
+    }
+    ldg.style.display='none';
+    var campName=_getCampaignForDevice(d.id);
+    if(d.connection_state!=='online'){
+      _setPlayingNow('Equipamento offline','var(--text-muted)');
+      el.innerHTML='<div class="na-box"><div class="na-box-sub">Equipamento offline</div></div>';
+    } else if(campName){
+      _setPlayingNow(campName,'var(--text-primary)');
+      el.innerHTML='<div class="info-section"><div class="info-section-title">Campanha Ativa</div>'+irow('Nome',campName)+'</div>';
+    } else {
+      _setPlayingNow('Sem campanha ativa','var(--text-muted)');
+      el.innerHTML='<div class="na-box"><div class="na-box-sub">Nenhuma campanha ativa para este equipamento.</div></div>';
+    }
+  }catch(err){
+    ldg.style.display='none';
+    _setPlayingNow('Erro ao buscar','var(--danger)');
+    el.innerHTML='<div class="na-box"><div class="na-box-sub">Erro: '+err.message+'</div></div>';
+  }
+}
+// Pre-busca campanhas em background
+async function prefetchCampaigns(){
+  if(!isConfigured()||_allCampaigns)return;
+  try{
+    var res=await api.getCampaigns({limit:10000});
+    _allCampaigns=res.data||[];
+    console.log('[NOS] Campanhas carregadas:',_allCampaigns.length);
+  }catch(e){
+    console.warn('[NOS] Falha ao buscar campanhas:',e.message);
+  }
+}
+window.onApiConfigured=function(){loadNOS();};
+document.addEventListener('DOMContentLoaded',function(){if(isConfigured())loadNOS();setInterval(function(){if(isConfigured())loadNOS();},600000);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closePanel();});
+</script>
+</body>
+</html>

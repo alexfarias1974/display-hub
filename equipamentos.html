@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Display Hub — Lista e status dos equipamentos de mídia digital.">
+  <title>Display Hub — Equipamentos</title>
+  <link rel="stylesheet" href="assets/css/global.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span class="sidebar-logo-text">Display Hub</span>
+      <span class="sidebar-logo-badge">v1.0</span>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a href="index.html" class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </a>
+      <a href="relatorio.html" class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Relatório de Exibições
+      </a>
+      <a href="equipamentos.html" class="nav-item active">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Equipamentos
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="sidebar-config-btn" onclick="openConfigModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+        Configurar API
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrapper">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Equipamentos</div>
+        <div class="topbar-subtitle" id="topbar-subtitle">Lista de equipamentos e status</div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="api-status-indicator">
+        <div class="api-status-dot" id="status-dot"></div>
+        <span class="api-status-label" id="status-label">Não configurado</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadEquipamentos()" style="gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Atualizar
+      </button>
+    </div>
+
+    <main class="main-content">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:16px;flex-wrap:wrap;">
+        <div>
+          <h1 class="page-title">Equipamentos</h1>
+          <p class="page-subtitle" id="equip-count">—</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <!-- Status filter -->
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-secondary btn-sm filter-status-btn active" data-status="all" onclick="filterByStatus('all',this)">Todos</button>
+            <button class="btn btn-secondary btn-sm filter-status-btn" data-status="online" onclick="filterByStatus('online',this)">
+              <span class="badge badge-success" style="padding:2px 6px;">Online</span>
+            </button>
+            <button class="btn btn-secondary btn-sm filter-status-btn" data-status="offline" onclick="filterByStatus('offline',this)">
+              <span class="badge badge-danger" style="padding:2px 6px;">Offline</span>
+            </button>
+          </div>
+          <!-- Search -->
+          <div style="position:relative;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" class="form-control" id="equip-search" placeholder="Buscar equipamento..." style="padding-left:32px;width:220px;" oninput="filterEquipamentos()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div id="equip-loading" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);display:none;">
+        <div class="loading-overlay"><div class="spinner spinner-lg"></div><span>Carregando equipamentos...</span></div>
+      </div>
+
+      <!-- Grid of device cards -->
+      <div id="equip-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>
+
+      <!-- Empty state -->
+      <div id="equip-empty" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:60px 24px;text-align:center;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;opacity:0.2;display:block;"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/></svg>
+        <p style="font-size:0.95rem;font-weight:500;color:var(--text-secondary);">Nenhum equipamento encontrado</p>
+      </div>
+
+      <!-- Table fallback -->
+      <div id="equip-table-section" style="display:none;margin-top:8px;">
+        <div class="table-wrapper">
+          <table class="data-table" id="equip-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Grupo</th>
+                <th>Status</th>
+                <th>Player</th>
+                <th>Última Conexão</th>
+                <th>Versão</th>
+              </tr>
+            </thead>
+            <tbody id="equip-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+let allDevices  = [];
+let allFolders  = {};
+let filteredDevices = [];
+let statusFilter = 'all';
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (isConfigured()) loadEquipamentos();
+});
+window.onApiConfigured = loadEquipamentos;
+
+async function loadEquipamentos() {
+  if (!isConfigured()) { openConfigModal(); return; }
+
+  document.getElementById('equip-loading').style.display = 'block';
+  document.getElementById('equip-grid').innerHTML = '';
+  document.getElementById('equip-empty').style.display = 'none';
+
+  try {
+    const [devResp, folderResp] = await Promise.all([
+      api.getDevices({ params: ['id','name','parent_id','connection_state','player_status','last_online','player_version','tags','profile','activation_state'] }),
+      api.getDeviceFolders(),
+    ]);
+
+    (folderResp.data || []).forEach(f => allFolders[f.id] = f);
+    allDevices = devResp.data || [];
+    filteredDevices = [...allDevices];
+
+    const online  = allDevices.filter(d => d.connection_state === 'online').length;
+    const offline = allDevices.filter(d => d.connection_state === 'offline').length;
+    document.getElementById('equip-count').textContent =
+      `${allDevices.length} equipamentos · ${online} online · ${offline} offline`;
+    document.getElementById('topbar-subtitle').textContent =
+      `${allDevices.length} equipamentos carregados`;
+
+    document.getElementById('equip-loading').style.display = 'none';
+    renderEquipamentos();
+
+  } catch (err) {
+    document.getElementById('equip-loading').style.display = 'none';
+    showToast('error', 'Erro ao carregar equipamentos', err.message);
+  }
+}
+
+function filterByStatus(status, btn) {
+  statusFilter = status;
+  document.querySelectorAll('.filter-status-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterEquipamentos();
+}
+
+function filterEquipamentos() {
+  const q = (document.getElementById('equip-search').value || '').toLowerCase();
+  filteredDevices = allDevices.filter(d => {
+    const matchSearch = !q || d.name.toLowerCase().includes(q);
+    const matchStatus = statusFilter === 'all' || d.connection_state === statusFilter;
+    return matchSearch && matchStatus;
+  });
+  renderEquipamentos();
+}
+
+function renderEquipamentos() {
+  const grid = document.getElementById('equip-grid');
+  const empty = document.getElementById('equip-empty');
+
+  if (filteredDevices.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = filteredDevices.map(d => {
+    const folder = allFolders[d.parent_id];
+    const isOnline = d.connection_state === 'online';
+    const statusBadge = isOnline
+      ? `<span class="badge badge-success"><span class="badge-dot"></span>Online</span>`
+      : d.connection_state === 'offline'
+      ? `<span class="badge badge-danger"><span class="badge-dot"></span>Offline</span>`
+      : `<span class="badge badge-muted">Desconhecido</span>`;
+
+    const playerBadge = d.player_status
+      ? (() => {
+          const m = { playback: ['badge-success','▶ Reproduzindo'], empty: ['badge-warning','Sem conteúdo'], pause: ['badge-info','Pausado'], problem: ['badge-danger','Problema'] };
+          const [cls, label] = m[d.player_status] || ['badge-muted', d.player_status];
+          return `<span class="badge ${cls}">${label}</span>`;
+        })()
+      : '';
+
+    const lastSeen = d.last_online
+      ? new Date(d.last_online).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      : '—';
+
+    return `
+    <div class="kpi-card" style="padding:20px;cursor:default;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:0.9rem;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(d.name)}">${escHtml(d.name)}</div>
+          <div style="font-size:0.76rem;color:var(--text-muted);margin-top:3px;">${folder ? escHtml(folder.name) : `ID #${d.id}`}</div>
+        </div>
+        ${statusBadge}
+      </div>
+      ${playerBadge ? `<div style="margin-bottom:10px;">${playerBadge}</div>` : ''}
+      <div style="display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:12px;margin-top:4px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.75rem;color:var(--text-muted);">Última conexão</span>
+          <span style="font-size:0.75rem;color:var(--text-secondary);">${lastSeen}</span>
+        </div>
+        ${d.player_version ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.75rem;color:var(--text-muted);">Versão do player</span>
+          <span style="font-size:0.75rem;color:var(--text-secondary);">${escHtml(d.player_version)}</span>
+        </div>` : ''}
+        ${folder ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.75rem;color:var(--text-muted);">Grupo</span>
+          <span class="badge badge-muted" style="font-size:0.7rem;">${escHtml(folder.name)}</span>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

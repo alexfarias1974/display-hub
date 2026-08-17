@@ -1,0 +1,13 @@
+{
+  "name": "display-hub",
+  "version": "1.0.0",
+  "description": "AC Display - Display Hub Platform",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node servidor.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

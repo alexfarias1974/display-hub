@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Display Hub - Status de todos os equipamentos em tempo real.">
+  <title>Display Hub — Dashboard</title>
+  <link rel="stylesheet" href="assets/css/global.css">
+  <style>
+    .devices-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+      margin-top: 4px;
+    }
+
+    .device-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .device-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+      transition: background 0.3s;
+    }
+    .device-card.online::before  { background: var(--success); }
+    .device-card.offline::before { background: var(--danger); }
+
+    .device-card:hover {
+      border-color: var(--border-accent);
+      box-shadow: var(--shadow-accent);
+      transform: translateY(-2px);
+    }
+
+    .device-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .device-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--accent-glow);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .device-icon svg { color: var(--accent); }
+
+    .device-name {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .device-location {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .device-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    .status-pill-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+    }
+    .status-pill.online  { background: rgba(16,185,129,.15); color: var(--success); }
+    .status-pill.offline { background: rgba(239,68,68,.12);  color: var(--danger);  }
+    .status-pill.online  .status-pill-dot { background: var(--success); box-shadow: 0 0 6px var(--success); animation: pulse-dot 2s infinite; }
+    .status-pill.offline .status-pill-dot { background: var(--danger); }
+
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; } 50% { opacity: 0.4; }
+    }
+
+    .player-pill {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .player-pill.playback { background: rgba(0,212,170,.1); color: var(--accent); }
+    .player-pill.problem  { background: rgba(239,68,68,.1);  color: var(--danger); }
+    .player-pill.empty    { background: rgba(245,158,11,.1);  color: var(--warning); }
+
+    .device-meta {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .dash-summary-bar {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .summary-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: 0.82rem;
+    }
+    .summary-chip-val {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .summary-chip-label { color: var(--text-muted); }
+
+    .loading-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      height: 130px;
+      animation: shimmer 1.5s infinite;
+    }
+    @keyframes shimmer {
+      0%,100% { opacity: 0.6; } 50% { opacity: 1; }
+    }
+
+    .last-online-label { color: var(--text-muted); font-size: 0.72rem; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span class="sidebar-logo-text">Display Hub</span>
+      <span class="sidebar-logo-badge">v1.0</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Principal</div>
+      <a href="index.html" class="nav-item active" id="nav-dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Equipamentos
+      </a>
+      <a href="nos.html" class="nav-item">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        NOS
+      </a>
+      <a href="relatorio.html" class="nav-item" id="nav-relatorio">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Relatório de Exibições
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="sidebar-config-btn" onclick="openConfigModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 19.07a10 10 0 0 1 0-14.14"/></svg>
+        Configurar API
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-wrapper">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Equipamentos</div>
+        <div class="topbar-subtitle" id="topbar-subtitle">Carregando status dos totens...</div>
+      </div>
+      <div class="topbar-spacer"></div>
+      <div class="api-status-indicator">
+        <div class="api-status-dot" id="status-dot"></div>
+        <span class="api-status-label" id="status-label">Não configurado</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="loadDevices()" style="gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Atualizar
+      </button>
+    </div>
+
+    <main class="main-content">
+      <div style="margin-bottom:24px;">
+        <h1 class="page-title">Equipamentos</h1>
+        <p class="page-subtitle">Status em tempo real de todos os equipamentos</p>
+      </div>
+
+      <!-- Summary chips -->
+      <div class="dash-summary-bar" id="summary-bar" style="display:none;">
+        <div class="summary-chip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <div>
+            <div class="summary-chip-val" id="chip-total">—</div>
+            <div class="summary-chip-label">Total de totens</div>
+          </div>
+        </div>
+        <div class="summary-chip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <div>
+            <div class="summary-chip-val" id="chip-online">—</div>
+            <div class="summary-chip-label">Online agora</div>
+          </div>
+        </div>
+        <div class="summary-chip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>
+            <div class="summary-chip-val" id="chip-offline">—</div>
+            <div class="summary-chip-label">Offline</div>
+          </div>
+        </div>
+        <div class="summary-chip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <div>
+            <div class="summary-chip-val" id="chip-playing">—</div>
+            <div class="summary-chip-label">Reproduzindo</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading skeletons -->
+      <div id="loading-area" class="loading-grid">
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+        <div class="skeleton-card"></div>
+      </div>
+
+      <!-- Device cards grid -->
+      <div class="devices-grid" id="devices-grid" style="display:none;"></div>
+
+      <!-- Empty state -->
+      <div id="empty-state" style="display:none;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:60px 24px;text-align:center;">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 16px;opacity:0.2;display:block;"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
+        <p style="font-size:0.95rem;font-weight:500;color:var(--text-secondary);">Nenhum equipamento encontrado</p>
+        <p style="font-size:0.82rem;color:var(--text-muted);margin-top:6px;">Verifique a conexão com a API.</p>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/app.js"></script>
+<script>
+// ── Helpers ──────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return 'Nunca';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(m / 60);
+  const d = Math.floor(h / 24);
+  if (d > 0)  return `há ${d}d`;
+  if (h > 0)  return `há ${h}h`;
+  if (m > 0)  return `há ${m}min`;
+  return 'agora';
+}
+
+function playerLabel(status) {
+  const map = { playback: 'Reproduzindo', empty: 'Sem conteúdo', pause: 'Pausado', problem: 'Problema', offline: 'Offline' };
+  return map[status] || status || '—';
+}
+
+function playerClass(status) {
+  return status || 'unknown';
+}
+
+// Exibe o nome completo do equipamento
+function friendlyName(name) {
+  return name || '—';
+}
+
+// ── Renderiza um card ─────────────────────────────────────
+function renderDeviceCard(device) {
+  const isOnline  = device.connection_state === 'online';
+  const statusCls = isOnline ? 'online' : 'offline';
+  const plClass   = playerClass(device.player_status);
+
+  return `
+    <div class="device-card ${statusCls}">
+      <div class="device-card-header">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="device-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <div>
+            <div class="device-name">${friendlyName(device.name)}</div>
+            <div class="device-location">${device.name}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="device-status-row">
+        <span class="status-pill ${statusCls}">
+          <span class="status-pill-dot"></span>
+          ${isOnline ? 'Online' : 'Offline'}
+        </span>
+        <span class="player-pill ${plClass}">${playerLabel(device.player_status)}</span>
+      </div>
+
+      <div class="device-meta">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Último contato: <strong>${timeAgo(device.last_online)}</strong></span>
+      </div>
+    </div>`;
+}
+
+// ── Carrega e renderiza ───────────────────────────────────
+async function loadDevices() {
+  if (!isConfigured()) { openConfigModal(); return; }
+
+  document.getElementById('loading-area').style.display  = 'grid';
+  document.getElementById('devices-grid').style.display  = 'none';
+  document.getElementById('empty-state').style.display   = 'none';
+  document.getElementById('summary-bar').style.display   = 'none';
+
+  try {
+    const resp = await api.getDevices({ limit: 10000 });
+    const all  = (resp.data || []).map(d => { if(d.connection_state !== 'online') d.player_status = 'offline'; return d; });
+
+    document.getElementById('loading-area').style.display = 'none';
+
+    if (all.length === 0) {
+      document.getElementById('empty-state').style.display = 'block';
+      document.getElementById('topbar-subtitle').textContent = 'Nenhum equipamento encontrado.';
+      return;
+    }
+
+    // Ordena: online primeiro, depois por nome
+    all.sort((a, b) => {
+      if (a.connection_state !== b.connection_state) {
+        return a.connection_state === 'online' ? -1 : 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    // Summary
+    const onlineCount  = all.filter(d => d.connection_state === 'online').length;
+    const offlineCount = all.length - onlineCount;
+    const playingCount = all.filter(d => d.player_status === 'playback').length;
+
+    document.getElementById('chip-total').textContent   = all.length;
+    document.getElementById('chip-online').textContent  = onlineCount;
+    document.getElementById('chip-offline').textContent = offlineCount;
+    document.getElementById('chip-playing').textContent = playingCount;
+    document.getElementById('summary-bar').style.display = 'flex';
+
+    document.getElementById('topbar-subtitle').textContent =
+      `${onlineCount} online · ${offlineCount} offline · atualizado ${new Date().toLocaleTimeString('pt-BR')}`;
+
+    // Render cards
+    const grid = document.getElementById('devices-grid');
+    grid.innerHTML = all.map(renderDeviceCard).join('');
+    grid.style.display = 'grid';
+
+  } catch (err) {
+    document.getElementById('loading-area').style.display = 'none';
+    document.getElementById('empty-state').style.display  = 'block';
+    showToast('error', 'Erro ao carregar equipamentos', err.message);
+  }
+}
+
+// Auto-refresh a cada 60 segundos
+document.addEventListener('DOMContentLoaded', () => {
+  if (isConfigured()) loadDevices();
+  setInterval(() => { if (isConfigured()) loadDevices(); }, 600000);
+});
+
+window.onApiConfigured = loadDevices;
+</script>
+</body>
+</html>
