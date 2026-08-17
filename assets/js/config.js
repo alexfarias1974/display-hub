@@ -4,7 +4,7 @@
 
 // Credenciais padrão (podem ser sobrescritas via modal de configuração)
 // O servidor local (servidor.js) serve os arquivos E faz proxy da API — sem CORS.
-const _DEFAULT_BASE = 'http://localhost:3131/api';
+const _DEFAULT_BASE = window.location.origin + '/api';
 const _DEFAULT_KEY  = '8SUS-V4XZ-H6S5-SW44'; // Token injetado pelo servidor — mantido aqui para o modal de config
 
 const CONFIG = {
