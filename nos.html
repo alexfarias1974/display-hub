@@ -363,7 +363,7 @@ async function prefetchCampaigns(){
   }
 }
 window.onApiConfigured=function(){loadNOS();};
-document.addEventListener('DOMContentLoaded',function(){if(isConfigured())loadNOS();setInterval(function(){if(isConfigured())loadNOS();},600000);});
+document.addEventListener('DOMContentLoaded',function(){if(isConfigured())loadNOS();setInterval(function(){if(isConfigured())loadNOS();},7200000);});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePanel();});
 </script>
 </body>
